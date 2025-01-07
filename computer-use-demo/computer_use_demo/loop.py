@@ -101,9 +101,9 @@ async def sampling_loop(
     while True:
         enable_prompt_caching = False
         betas = [COMPUTER_USE_BETA_FLAG]
-        image_truncation_threshold = 10
+        image_truncation_threshold = only_n_most_recent_images or 0
         if provider == APIProvider.ANTHROPIC:
-            client = Anthropic(api_key=api_key)
+            client = Anthropic(api_key=api_key, max_retries=4)
             enable_prompt_caching = True
         elif provider == APIProvider.VERTEX:
             client = AnthropicVertex()
@@ -113,8 +113,9 @@ async def sampling_loop(
         if enable_prompt_caching:
             betas.append(PROMPT_CACHING_BETA_FLAG)
             _inject_prompt_caching(messages)
-            # Is it ever worth it to bust the cache with prompt caching?
-            image_truncation_threshold = 50
+            # Because cached reads are 10% of the price, we don't think it's
+            # ever sensible to break the cache by truncating images
+            only_n_most_recent_images = 0
             system["cache_control"] = {"type": "ephemeral"}
 
         if only_n_most_recent_images:
